@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "YOUR_DOCKERHUB_USERNAME/user-service"
+        IMAGE_NAME = "jainambarbhaya/user-service"
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
