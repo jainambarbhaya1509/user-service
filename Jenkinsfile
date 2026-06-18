@@ -5,7 +5,7 @@ pipeline {
         IMAGE_NAME = "jainambarbhaya15/user-service"
         IMAGE_TAG  = "${BUILD_NUMBER}"
 
-        GITOPS_REPO = "https://github.com/jainambarbhaya1509/gitops.git"
+        GITOPS_REPO = "https://github.com"
         GIT_BRANCH  = "main"
     }
 
@@ -62,7 +62,7 @@ pipeline {
                         rm -rf gitops
 
                         git clone \
-                        https://$GIT_USER:$GIT_TOKEN@github.com/jainambarbhaya1509/gitops.git \
+                        https://$GIT_USER:$GIT_TOKEN@://github.com \
                         gitops
                     '''
                 }
@@ -72,10 +72,15 @@ pipeline {
         stage('Update Dev Helm Values') {
             steps {
                 sh """
+                    # Update the tag dynamically
                     sed -i 's/tag:.*/tag: "${IMAGE_TAG}"/' \
                     gitops/charts/user-service/values-prod.yaml
 
-                    echo "Updated dev-values.yaml"
+                    # Ensure fallback is set to handle corporate firewall overrides
+                    sed -i 's/pullPolicy:.*/pullPolicy: IfNotPresent/' \
+                    gitops/charts/user-service/values-prod.yaml
+
+                    echo "Updated values-prod.yaml configuration:"
                     cat gitops/charts/user-service/values-prod.yaml
                 """
             }
@@ -101,7 +106,7 @@ pipeline {
                         git commit -m "Deploy build ${IMAGE_TAG} to dev" || true
 
                         git remote set-url origin \
-                        https://\$GIT_USER:\$GIT_TOKEN@github.com/jainambarbhaya1509/gitops.git
+                        https://\$GIT_USER:\$GIT_TOKEN@://github.com
 
                         git push origin main
                     """
@@ -113,7 +118,7 @@ pipeline {
     post {
 
         success {
-            echo "Docker image built and pushed"
+            echo "Docker image built and pushed safely"
             echo "GitOps repository updated"
             echo "ArgoCD will deploy DEV automatically"
         }
