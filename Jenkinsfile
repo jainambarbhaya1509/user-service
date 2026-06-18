@@ -3,15 +3,15 @@ pipeline {
 
     environment {
         IMAGE_NAME = "jainambarbhaya15/user-service"
-        IMAGE_TAG = "${BUILD_NUMBER}"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
 
         GITOPS_REPO = "https://github.com/jainambarbhaya1509/gitops.git"
-        GIT_BRANCH = "main"
+        GIT_BRANCH  = "main"
     }
 
     stages {
 
-        stage('Checkout App Code') {
+        stage('Checkout Application Code') {
             steps {
                 checkout scm
             }
@@ -30,13 +30,12 @@ pipeline {
                 withCredentials([
                     usernamePassword(
                         credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'jainambarbhaya15',
-                        passwordVariable: 'jainamb1509'
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
                     )
                 ]) {
-
                     sh '''
-                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                     '''
                 }
             }
@@ -50,61 +49,62 @@ pipeline {
             }
         }
 
-        stage('Clone GitOps Repo') {
+        stage('Clone GitOps Repository') {
             steps {
-
                 withCredentials([
                     usernamePassword(
                         credentialsId: 'github-token',
-                        usernameVariable: 'jainambarbhaya1509',
-                        passwordVariable: 'jainamb1509'
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_TOKEN'
                     )
                 ]) {
-
                     sh '''
-                    rm -rf gitops
+                        rm -rf gitops
 
-                    git clone https://$GIT_USER:$GIT_TOKEN@github.com/jainambarbhaya1509/gitops.git gitops
+                        git clone \
+                        https://$GIT_USER:$GIT_TOKEN@github.com/jainambarbhaya1509/gitops.git \
+                        gitops
                     '''
                 }
             }
         }
 
-        stage('Update Helm Chart') {
+        stage('Update Dev Helm Values') {
             steps {
-
                 sh """
                     sed -i 's/tag:.*/tag: "${IMAGE_TAG}"/' \
-                    gitops/helm/user-service/values.yaml
+                    gitops/envs/dev-values.yaml
 
-                    cat gitops/helm/user-service/values.yaml
+                    echo "Updated dev-values.yaml"
+                    cat gitops/envs/dev-values.yaml
                 """
             }
         }
 
-        stage('Commit & Push Changes') {
+        stage('Commit And Push GitOps Changes') {
             steps {
-
                 withCredentials([
                     usernamePassword(
                         credentialsId: 'github-token',
-                        usernameVariable: 'jainambarbhaya1509',
-                        passwordVariable: 'jainamb1509'
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_TOKEN'
                     )
                 ]) {
+                    sh """
+                        cd gitops
 
-                    sh '''
-                    cd gitops
+                        git config user.email "jenkins@local"
+                        git config user.name "Jenkins"
 
-                    git config user.email "jainambarbhaya1509@gmail.com"
-                    git config user.name "jainambarbhaya1509"
+                        git add .
 
-                    git add .
+                        git commit -m "Deploy build ${IMAGE_TAG} to dev" || true
 
-                    git commit -m "Update image tag to ${IMAGE_TAG}" || true
+                        git remote set-url origin \
+                        https://\$GIT_USER:\$GIT_TOKEN@github.com/jainambarbhaya1509/gitops.git
 
-                    git push origin main
-                    '''
+                        git push origin main
+                    """
                 }
             }
         }
@@ -113,9 +113,9 @@ pipeline {
     post {
 
         success {
-            echo "Docker image pushed successfully"
-            echo "Helm chart updated"
-            echo "ArgoCD will sync automatically"
+            echo "Docker image built and pushed"
+            echo "GitOps repository updated"
+            echo "ArgoCD will deploy DEV automatically"
         }
 
         failure {
