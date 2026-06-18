@@ -29,12 +29,3 @@ def get_user(user_id: int):
     return {
         "error": "User Not Found"
     }
-
-@app.post("/users")
-def create_user(user: dict):
-
-    users.append(user)
-
-    return {
-        "message": "User Created"
-    }
