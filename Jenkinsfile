@@ -73,10 +73,10 @@ pipeline {
             steps {
                 sh """
                     sed -i 's/tag:.*/tag: "${IMAGE_TAG}"/' \
-                    gitops/charts/user-service/values-prod.yaml
+                    gitops/environment/values-dev.yaml
 
                     echo "Updated dev-values.yaml"
-                    cat gitops/charts/user-service/values-prod.yaml
+                    cat gitops/environment/values-dev.yaml
                 """
             }
         }
